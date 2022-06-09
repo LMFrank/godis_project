@@ -1,32 +1,47 @@
-package main
+package tcp
 
 import (
 	"bufio"
+	"context"
 	"fmt"
+	"github.com/LMfrank/godis_project/godis/interface/tcp"
+	"github.com/LMfrank/godis_project/godis/lib/logger"
 	"io"
 	"log"
 	"net"
+	"sync"
 )
 
-func ListenAndServe(address string) {
-	// 绑定监听地址
-	listener, err := net.Listen("tcp", address)
-	if err != nil {
-		log.Fatal(fmt.Sprintf("listen err: %v", err))
-	}
-	defer listener.Close()
-	log.Println(fmt.Sprintf("bind: %s, start listening...", address))
+func ListenAndServe(listener net.Listener, handler tcp.Handler, closeChan <-chan struct{}) {
+	go func() {
+		<-closeChan
+		logger.Info("shutting down...")
+		_ = listener.Close()
+		_ = handler.Close()
+	}()
 
+	defer func() {
+		_ = listener.Close()
+		_ = handler.Close()
+	}()
+
+	ctx := context.Background()
+	var waitDone sync.WaitGroup
 	for {
-		// 阻塞直到有新的连接建立或者listen中断
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Fatal(fmt.Sprintf("accept err: %v", err))
+			break
 		}
-
-		// 开启新的goroutine处理连接
-		go Handle(conn)
+		logger.Info("accept link")
+		waitDone.Add(1)
+		go func() {
+			defer func() {
+				waitDone.Done()
+			}()
+			handler.Handle(ctx, conn)
+		}()
 	}
+	waitDone.Wait()
 }
 
 func Handle(conn net.Conn) {
