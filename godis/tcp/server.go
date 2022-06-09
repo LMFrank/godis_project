@@ -1,16 +1,23 @@
 package tcp
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"github.com/LMfrank/godis_project/godis/interface/tcp"
 	"github.com/LMfrank/godis_project/godis/lib/logger"
-	"io"
-	"log"
 	"net"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
+	"time"
 )
+
+type Config struct {
+	Address    string        `yaml:"address"`
+	MaxConnect uint32        `yaml:"max-connect"`
+	Timeout    time.Duration `yaml:"timeout"`
+}
 
 func ListenAndServe(listener net.Listener, handler tcp.Handler, closeChan <-chan struct{}) {
 	go func() {
@@ -44,26 +51,24 @@ func ListenAndServe(listener net.Listener, handler tcp.Handler, closeChan <-chan
 	waitDone.Wait()
 }
 
-func Handle(conn net.Conn) {
-	reader := bufio.NewReader(conn)
-	for {
-		// ReadString 会一直阻塞直到遇到分隔符 '\n'
-		// 遇到分隔符后会返回上次遇到分隔符或连接建立后收到的所有数据, 包括分隔符本身
-		// 若在遇到分隔符之前遇到异常, ReadString 会返回已收到的数据和错误信息
-		msg, err := reader.ReadString('\n')
-		if err != nil {
-			if err == io.EOF {
-				log.Println("connection close")
-			} else {
-				log.Println(err)
-			}
-			return
+func ListenAndServeWithSignal(cfg *Config, handler tcp.Handler) error {
+	closeChan := make(chan struct{})
+	sigCh := make(chan os.Signal)
+	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
+	go func() {
+		sig := <-sigCh
+		switch sig {
+		case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
+			closeChan <- struct{}{}
 		}
-		b := []byte(msg)
-		conn.Write(b)
-	}
-}
+	}()
 
-func main() {
-	ListenAndServe(":8000")
+	listener, err := net.Listen("tcp", cfg.Address)
+	if err != nil {
+		return err
+	}
+
+	logger.Info(fmt.Sprintf("bind: %s, start listening...", cfg.Address))
+	ListenAndServe(listener, handler, closeChan)
+	return nil
 }
