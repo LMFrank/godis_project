@@ -95,6 +95,7 @@ func Warn(v ...interface{}) {
 func Error(v ...interface{}) {
 	mu.Lock()
 	defer mu.Unlock()
+
 	setPrefix(ERROR)
 	logger.Println(v...)
 }
@@ -103,6 +104,7 @@ func Error(v ...interface{}) {
 func Fatal(v ...interface{}) {
 	mu.Lock()
 	defer mu.Unlock()
+
 	setPrefix(FATAL)
 	logger.Fatalln(v...)
 }

@@ -19,7 +19,9 @@ type Config struct {
 	Timeout    time.Duration `yaml:"timeout"`
 }
 
+// 监听并提供服务，并在收到 closeChan 发来的关闭通知后关闭
 func ListenAndServe(listener net.Listener, handler tcp.Handler, closeChan <-chan struct{}) {
+	// 监听关闭通知
 	go func() {
 		<-closeChan
 		logger.Info("shutting down...")
@@ -27,6 +29,7 @@ func ListenAndServe(listener net.Listener, handler tcp.Handler, closeChan <-chan
 		_ = handler.Close()
 	}()
 
+	// 在异常退出后释放资源
 	defer func() {
 		_ = listener.Close()
 		_ = handler.Close()
@@ -39,6 +42,7 @@ func ListenAndServe(listener net.Listener, handler tcp.Handler, closeChan <-chan
 		if err != nil {
 			break
 		}
+
 		logger.Info("accept link")
 		waitDone.Add(1)
 		go func() {

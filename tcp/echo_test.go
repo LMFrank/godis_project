@@ -45,12 +45,13 @@ func TestListenAndServe(t *testing.T) {
 			t.Error("get wrong response")
 			return
 		}
-
-		_ = conn.Close()
-		for i := 0; i < 5; i++ {
-			_, _ = net.Dial("tcp", addr)
-		}
-		closeChan <- struct{}{}
-		time.Sleep(time.Second)
 	}
+
+	_ = conn.Close()
+	for i := 0; i < 5; i++ {
+		_, _ = net.Dial("tcp", addr)
+	}
+	closeChan <- struct{}{}
+	time.Sleep(time.Second)
+
 }
