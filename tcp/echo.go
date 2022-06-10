@@ -3,9 +3,9 @@ package tcp
 import (
 	"bufio"
 	"context"
-	"github.com/LMfrank/godis_project/godis/lib/logger"
-	"github.com/LMfrank/godis_project/godis/sync/atomic"
-	"github.com/LMfrank/godis_project/godis/sync/wait"
+	"github.com/LMfrank/godis_project/lib/logger"
+	"github.com/LMfrank/godis_project/sync/atomic"
+	"github.com/LMfrank/godis_project/sync/wait"
 	"io"
 	"net"
 	"sync"
@@ -55,6 +55,7 @@ func (h *EchoHandler) Handle(ctx context.Context, conn net.Conn) {
 			}
 			return
 		}
+
 		client.Waiting.Add(1)
 		b := []byte(msg)
 		_, _ = conn.Write(b)

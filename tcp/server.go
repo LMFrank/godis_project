@@ -3,8 +3,8 @@ package tcp
 import (
 	"context"
 	"fmt"
-	"github.com/LMfrank/godis_project/godis/interface/tcp"
-	"github.com/LMfrank/godis_project/godis/lib/logger"
+	"github.com/LMfrank/godis_project/interface/tcp"
+	"github.com/LMfrank/godis_project/lib/logger"
 	"net"
 	"os"
 	"os/signal"
@@ -58,7 +58,7 @@ func ListenAndServeWithSignal(cfg *Config, handler tcp.Handler) error {
 	go func() {
 		sig := <-sigCh
 		switch sig {
-		case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
+		case syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
 			closeChan <- struct{}{}
 		}
 	}()
