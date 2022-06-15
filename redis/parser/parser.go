@@ -1,15 +1,16 @@
-package parse
+package parser
 
 import (
 	"bufio"
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/LMfrank/godis_project/interface/redis"
 	"github.com/LMfrank/godis_project/lib/logger"
+	"github.com/LMfrank/godis_project/redis/protocol"
 	"io"
 	"runtime/debug"
 	"strconv"
+	"strings"
 )
 
 type Payload struct {
@@ -62,6 +63,10 @@ type readState struct {
 	msgType           byte
 	args              [][]byte
 	bulkLen           int64
+}
+
+func (s *readState) finished() bool {
+	return s.expectedArgsCount > 0 && len(s.args) == s.expectedArgsCount
 }
 
 func parse0(reader io.Reader, ch chan<- *Payload) {
@@ -137,7 +142,7 @@ func parse0(reader io.Reader, ch chan<- *Payload) {
 				state = readState{}
 				continue
 			}
-			if state.finshed() {
+			if state.finished() {
 				var result redis.Reply
 				if state.msgType == '*' {
 					result = protocol.MakeMultiBulkReply(state.args)
@@ -219,7 +224,30 @@ func parseBulkHeader(msg []byte, state *readState) error {
 	}
 }
 
-func parseSingleLineReply(msg []byte) (redis.Reply, error) {}
+func parseSingleLineReply(msg []byte) (redis.Reply, error) {
+	str := strings.TrimSuffix(string(msg), "\r\n")
+	var result redis.Reply
+	switch msg[0] {
+	case '+':
+		result = protocol.MakeStatusReply(str[1:])
+	case '-':
+		result = protocol.MakeErrReply(str[1:])
+	case ':':
+		val, err := strconv.ParseInt(str[1:], 10, 64)
+		if err != nil {
+			return nil, errors.New("protocol error: " + string(msg))
+		}
+		result = protocol.MakeIntReply(val)
+	default:
+		strs := strings.Split(str, " ")
+		args := make([][]byte, len(strs))
+		for i, s := range strs {
+			args[i] = []byte(s)
+		}
+		result = protocol.MakeMultiBulkReply(args)
+	}
+	return result, nil
+}
 
 func readBody(msg []byte, state *readState) error {
 	line := msg[0 : len(msg)-2]
