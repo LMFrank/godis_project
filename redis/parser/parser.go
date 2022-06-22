@@ -24,7 +24,7 @@ func ParseStream(reader io.Reader) <-chan *Payload {
 	return ch
 }
 
-// 解析报文并返回所有的 reply
+// ParseBytes 解析报文并返回所有的 reply
 func ParseBytes(data []byte) ([]redis.Reply, error) {
 	ch := make(chan *Payload)
 	reader := bytes.NewReader(data)
@@ -45,7 +45,7 @@ func ParseBytes(data []byte) ([]redis.Reply, error) {
 	return results, nil
 }
 
-// 解析报文并返回第一个 payload
+// ParseOne 解析报文并返回第一个 payload
 func ParseOne(data []byte) (redis.Reply, error) {
 	ch := make(chan *Payload)
 	reader := bytes.NewReader(data)
@@ -264,5 +264,6 @@ func readBody(msg []byte, state *readState) error {
 	} else {
 		state.args = append(state.args, line)
 	}
+
 	return nil
 }
